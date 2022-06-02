@@ -1,0 +1,21 @@
+---
+- name: Configure target
+  become: true
+  hosts: iscsi
+  roles:
+    - iscsi-target
+
+- name: Configure cluster
+  become: true
+  hosts: servers
+  roles:
+    - sedovandrew.nginx
+    - pacemaker
+    - iscsi-client
+
+- name: Configure GFS2
+  become: true
+  hosts: pcm-0
+  roles:
+    - config-gfs2
+

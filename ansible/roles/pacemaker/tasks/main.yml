@@ -1,0 +1,46 @@
+- name: Install pacemaker packages
+  yum: name={{ item }}
+  with_items:
+    - pacemaker
+    - pcs
+    - psmisc
+    - policycoreutils-python
+
+- name: Copy a new "hosts" file into place, backing up the original if it differs from the copied version
+  ansible.builtin.copy:
+    src: hosts
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Set authorized key took from file
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file', 'id_rsa.pub') }}"
+
+- name: Copy the private_key
+  copy:
+    src: "id_rsa"
+    dest: /root/.ssh/id_rsa
+
+- name: Enable pcsd service
+  systemd:
+    name: pcsd
+    state: started
+    enabled: yes
+
+- name: Config | Setting hacluster password
+  user:
+    name:  "{{ pacemaker_hacluster_user }}"
+    password: "{{ pacemaker_hacluster_sha }}"
+  become: true
+
+- name: Pcs auth
+  shell: |
+    pcs cluster auth {{ groups['servers']|join(' ') }} -u {{ pacemaker_hacluster_user }} -p  {{ pacemaker_hacluster_password }}
+    pcs cluster setup --name {{ pacemaker_hacluster_name }} {{ groups['servers']|join(' ') }}
+    pcs cluster start --all
+
